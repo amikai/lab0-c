@@ -136,15 +136,14 @@ void *test_malloc(size_t size)
     new_block->magic_header = MAGICHEADER;
     new_block->payload_size = size;
     *find_footer(new_block) = MAGICFOOTER;
-    void *p = (void *) &new_block->payload;
-    memset(p, FILLCHAR, size);
+    memset((void *) &new_block->payload, FILLCHAR, size);
     new_block->next = allocated;
     new_block->prev = NULL;
     if (allocated)
         allocated->prev = new_block;
     allocated = new_block;
     allocated_count++;
-    return p;
+    return (void *) &new_block->payload;
 }
 
 void test_free(void *p)
