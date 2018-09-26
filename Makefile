@@ -14,6 +14,7 @@ queue.o: queue.c queue.h harness.h
 qtest: qtest.c report.c console.c harness.c queue.o
 	$(CC) $(CFLAGS) -o qtest qtest.c report.c console.c harness.c queue.o
 
+.PHONY: test clean
 test: qtest scripts/driver.py
 	scripts/driver.py
 
