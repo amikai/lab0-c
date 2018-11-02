@@ -18,6 +18,7 @@
 #include "harness.h"
 #include "queue.h"
 
+
 /*
   Create empty queue.
   Return NULL if could not allocate space.
@@ -26,7 +27,7 @@ queue_t *q_new()
 {
     queue_t *q = malloc(sizeof(queue_t));
     if (q) {
-        q->head = q->tail = NULL;
+        INIT_LIST_HEAD(&q->head);
         q->size = 0;
     }
     return q;
@@ -38,12 +39,11 @@ void q_free(queue_t *q)
     if (!q)
         return;
 
-    list_ele_t *visit = q->head;
-    while (visit) {
-        q->head = visit;
-        visit = visit->next;
-        free(q->head->value);
-        free(q->head);
+    list_ele_t *visit;
+    list_ele_t *next;
+    list_for_each_entry_safe(visit, next, &q->head, list) {
+        free(visit->value);
+        free(visit);
     }
     free(q);
 }
@@ -71,11 +71,7 @@ bool q_insert_head(queue_t *q, char *s)
     }
     strcpy(newh->value, s);
 
-    if (q->size == 0) {
-        q->tail = newh;
-    }
-    newh->next = q->head;
-    q->head = newh;
+    list_add(&newh->list, &q->head);
     q->size++;
 
     return true;
@@ -105,13 +101,7 @@ bool q_insert_tail(queue_t *q, char *s)
     }
     strcpy(newh->value, s);
 
-    newh->next = NULL;
-    if (q->size == 0) {
-        q->head = newh;
-    } else {
-        q->tail->next = newh;
-    }
-    q->tail = newh;
+    list_add_tail(&newh->list, &q->head);
     q->size++;
 
     return true;
@@ -132,19 +122,19 @@ bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
         return false;
 
     int size;
+    list_ele_t *target_node = list_first_entry(&q->head, list_ele_t, list );
     // if sp is non-NULL
     if (sp) {
-        size = strlen(q->head->value);
+        size = strlen(target_node->value);
         size = size > bufsize - 1 ? bufsize - 1 : size;
-        strncpy(sp, q->head->value, size);
+        strncpy(sp, target_node->value, size);
         sp[size] = '\0';
     }
 
-    list_ele_t *temp = q->head;
-    q->head = temp->next;
+    list_del(&target_node->list);
     q->size--;
-    free(temp->value);
-    free(temp);
+    free(target_node->value);
+    free(target_node);
     return true;
 }
 
@@ -171,14 +161,13 @@ void q_reverse(queue_t *q)
     if (!q || q->size == 0)
         return;
 
-    list_ele_t *prev_ele = NULL;
-    list_ele_t *temp_ele = q->head;
-    q->tail = q->head;
-    while (temp_ele) {
-        temp_ele = temp_ele->next;
-        q->head->next = prev_ele;
-        prev_ele = q->head;
-        q->head = temp_ele;
+    struct list_head *visit, *temp, *safe;
+    list_for_each_safe(visit, safe,&q->head) {
+        temp = visit->next;
+        visit->next = visit->prev;
+        visit->prev = temp;
     }
-    q->head = prev_ele;
+    temp = q->head.next;
+    q->head.next = q->head.prev;
+    q->head.prev = temp;
 }
